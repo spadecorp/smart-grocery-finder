@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="client/public/SPaDe_Name3.png" alt="SPaDe Corp Logo" width="160" />
+  <img src="https://github.com/spadecorp/smart-grocery-finder/releases/download/Logo/SPaDe_Name3.png" alt="SPaDe Corp Logo" width="160" />
   <h1>Smart Grocery</h1>
   <p><strong>Smart Grocery Finder & Multi-Stop Geospatial Routing Suite</strong></p>
   <p>
