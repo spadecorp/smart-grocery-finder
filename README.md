@@ -94,5 +94,5 @@ smart-grocery-finder/
 └── src-tauri/                          # Tauri Rust backend & window configuration
 ```
 ---
-© <img src="https://github.com/spadecorp/smart-grocery-finder/releases/download/Logo/SPaDe_Name3.png" alt="SPaDe Corp Logo" width="60" />
+© <img src="https://github.com/spadecorp/smart-grocery-finder/releases/download/Release/SPaDe_Name3.png" alt="SPaDe Corp Logo" width="60" />
  
