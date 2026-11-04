@@ -1,6 +1,6 @@
 <div align="center">
   <img src="client/public/SPaDe_Name3.png" alt="SPaDe Corp Logo" width="160" />
-  <h1>SPaDe Corp Domestic Intelligence</h1>
+  <h1>Smart Grocery</h1>
   <p><strong>Smart Grocery Finder & Multi-Stop Geospatial Routing Suite</strong></p>
   <p>
     <img src="https://img.shields.io/badge/Tauri-v1.5%2Fv2-blue?style=flat-square&logo=tauri" alt="Tauri">
@@ -15,7 +15,7 @@
 
 ## 🧭 Overview
 
-**SPaDe Corp Grocery Finder** is an enterprise-grade, offline-capable desktop application designed for high-performance geospatial intelligence. Built using **Tauri, React, Vite, Tailwind CSS, Leaflet, and React Query**, it eliminates hardcoded mock data entirely in favor of live, real-time geocoding and multi-stop route optimization.
+Smart Grocery Finder is an offline-capable desktop application designed for high-performance geospatial intelligence. Built using **Tauri, React, Vite, Tailwind CSS, Leaflet, and React Query**, it eliminates hardcoded mock data entirely in favor of live, real-time geocoding and multi-stop route optimization.
 
 ---
 
@@ -30,6 +30,45 @@
 
 ---
 
+## 🖥️ For End Users: How to Download & Run
+
+If you want to run **SPaDe Corp Grocery Finder** directly on your desktop without configuring developer tools:
+
+1. **Download the App**: 
+   * Go to the [Releases Page](https://github.com/spadecorp/smart-grocery-finder/releases) (or clone/download this repository as a `.zip` and extract it).
+2. **Run Locally (No Server Required)**:
+   * This is a standalone Tauri desktop application. All geospatial routing, geocoding, and preference engines run 100% locally on your machine with zero background servers needed.
+
+---
+
+## 🛠️ For Developers: Building from Source
+
+If you want to compile the native desktop binary yourself:
+
+### Prerequisites
+* **Node.js** (v18 or higher)
+* **Rust** (Required for Tauri compilation — [Install Rust](https://www.rust-lang.org/tools/install))
+
+### Installation Steps
+1. **Clone the repository**:
+   ```bash
+   git clone [https://github.com/spadecorp/smart-grocery-finder.git](https://github.com/spadecorp/smart-grocery-finder.git)
+   cd smart-grocery-finder
+2. Install dependencies:
+   ```bash
+   npm install
+
+3. Run in Development Mode:
+   ```bash
+   npm run tauri dev
+
+4. Build the Standalone Installer (.exe / .app):
+   ```bash
+   npm run build
+   npx tauri build
+
+5. Output Installer Location: src-tauri/target/release/bundle/
+---
 ## 📁 Repository Structure
 
 ```text
@@ -54,3 +93,4 @@ smart-grocery-finder/
 │   │   └── main.tsx                    # React DOM entry point
 │   └── package.json
 └── src-tauri/                          # Tauri Rust backend & window configuration
+
