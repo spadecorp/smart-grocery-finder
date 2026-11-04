@@ -1,93 +1,76 @@
-import { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-interface ZipcodeResult {
-  zipcode: string
-  city: string
-  state: string
-  area?: string
+export interface ZipcodeSuggestion {
+  zipcode: string;
+  city: string;
+  state: string;
+  area?: string;
 }
 
-interface UseZipcodeAutocompleteResult {
-  suggestions: ZipcodeResult[]
-  isLoading: boolean
-  error: string | null
-  clearSuggestions: () => void
-}
+export function useZipcodeAutocomplete(query: string, debounceMs = 300) {
+  const [suggestions, setSuggestions] = useState<ZipcodeSuggestion[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export function useZipcodeAutocomplete(query: string, delay: number = 300): UseZipcodeAutocompleteResult {
-  const [suggestions, setSuggestions] = useState<ZipcodeResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const trimmed = query.trim();
+    
+    // Only trigger if user is typing numbers (zipcode search)
+    if (!trimmed || trimmed.length < 2 || !/^\d+/.test(trimmed)) {
+      setSuggestions([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    async (searchQuery: string) => {
-      if (!searchQuery || searchQuery.length < 1) {
-        setSuggestions([])
-        setIsLoading(false)
-        return
-      }
+    setIsLoading(true);
+    setError(null);
 
-      setIsLoading(true)
-      setError(null)
-
+    const timer = setTimeout(async () => {
       try {
-        console.log(`🔍 Fetching zipcode suggestions for: "${searchQuery}"`)
-        
-        const response = await axios.get('/api/grocery/zipcodes', {
-          params: { q: searchQuery },
-          timeout: 5000
-        })
-
-        if (response.data.success) {
-          console.log(`✅ Received ${response.data.data.length} suggestions`)
-          setSuggestions(response.data.data)
-        } else {
-          console.error('❌ Zipcode API error:', response.data.error)
-          setError('Failed to fetch suggestions')
-          setSuggestions([])
-        }
-      } catch (err) {
-        console.error('❌ Zipcode autocomplete error:', err)
-        if (axios.isAxiosError(err)) {
-          if (err.code === 'ECONNABORTED') {
-            setError('Request timeout - please try again')
-          } else if (err.response?.status === 429) {
-            setError('Too many requests - please wait a moment')
+        // If it's a complete 5-digit US zipcode, query the live public registry instantly
+        if (trimmed.length === 5) {
+          const response = await axios.get(`https://api.zippopotam.us/us/${trimmed}`, { timeout: 4000 });
+          const data = response.data;
+          
+          if (data && data.places && data.places.length > 0) {
+            const place = data.places[0];
+            setSuggestions([{
+              zipcode: data['post code'],
+              city: place['place name'],
+              state: place['state abbreviation'],
+              area: place['state']
+            }]);
           } else {
-            setError('Failed to fetch suggestions')
+            setSuggestions([]);
           }
         } else {
-          setError('Network error - please check your connection')
+          // For partial zipcodes, allow direct custom entry fallback
+          setSuggestions([{
+            zipcode: trimmed,
+            city: 'Custom Zipcode',
+            state: 'US',
+            area: `${trimmed}...`
+          }]);
         }
-        setSuggestions([])
+      } catch (err) {
+        // If the live API fails or network is offline, ensure the user's typed zipcode is still fully usable
+        setSuggestions([{
+          zipcode: trimmed,
+          city: 'Entered Location',
+          state: 'US',
+          area: 'Custom Entry'
+        }]);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    },
-    []
-  )
+    }, debounceMs);
 
-  // Debounce the search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      debouncedSearch(query)
-    }, delay)
+    return () => clearTimeout(timer);
+  }, [query, debounceMs]);
 
-    return () => clearTimeout(timer)
-  }, [query, delay, debouncedSearch])
+  const clearSuggestions = () => setSuggestions([]);
 
-  const clearSuggestions = useCallback(() => {
-    setSuggestions([])
-    setError(null)
-    setIsLoading(false)
-  }, [])
-
-  return {
-    suggestions,
-    isLoading,
-    error,
-    clearSuggestions
-  }
-} 
+  return { suggestions, isLoading, error, clearSuggestions };
+}
