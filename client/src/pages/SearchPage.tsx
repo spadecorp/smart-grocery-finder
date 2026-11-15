@@ -15,6 +15,7 @@ const POPULAR_ITEMS = [
 export default function SearchPage({ darkMode }: { darkMode: boolean }) {
   const navigate = useNavigate()
   const [location, setLocation] = useState('')
+  const [radiusMiles, setRadiusMiles] = useState(10)
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([])
   const [isSearchingLoc, setIsSearchingLoc] = useState(false)
   const [showLocSuggestions, setShowLocSuggestions] = useState(false)
@@ -73,6 +74,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
     if (!location.trim() || items.length === 0) return
     const params = new URLSearchParams({
       location: location.trim(),
+      radius: String(radiusMiles),
       item: items.join(', ')
     })
     navigate(`/results?${params.toString()}`)
@@ -134,6 +136,15 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
               </div>
             )}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="radius" className="block text-sm font-semibold mb-2">Store search radius</label>
+          <select id="radius" value={radiusMiles} onChange={e => setRadiusMiles(Number(e.target.value))}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm ${darkMode ? 'bg-[#252830] border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}>
+            {[5, 10, 15, 25, 50].map(miles => <option key={miles} value={miles}>{miles} miles{miles === 10 ? ' (default)' : ''}</option>)}
+          </select>
+          <p className="text-xs text-gray-400 mt-2">Only stores within this radius will be considered.</p>
         </div>
 
         {/* Weekly Grocery List Builder */}
