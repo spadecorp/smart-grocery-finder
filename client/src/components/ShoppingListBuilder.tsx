@@ -101,7 +101,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
   };
 
   return (
-    <div className="bg-white dark:bg-[#1b1e23] rounded-2xl shadow-sm p-6 border border-gray-200 dark:border-gray-800 transition-colors">
+    <div className="bg-white dark:bg-[#15181D] rounded-2xl shadow-sm p-6 border border-gray-200 dark:border-gray-800 transition-colors">
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-amber-50 dark:bg-amber-400/10 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-400/20">
@@ -109,7 +109,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Active Shopping Basket</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Configure store preferences per item</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Store prices, inventory and health ratings are not verified</p>
           </div>
         </div>
         <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-lg text-xs font-bold font-mono">
@@ -117,7 +117,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
         </span>
       </div>
 
-      <form onSubmit={addItem} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 dark:bg-[#141619] rounded-xl border border-gray-200 dark:border-gray-800 relative">
+      <form onSubmit={addItem} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 dark:bg-[#0E1013] rounded-xl border border-gray-200 dark:border-gray-800 relative">
         <div className="md:col-span-2 relative">
           <div className="relative flex items-center">
             <span className="absolute left-3 text-gray-400 pointer-events-none">
@@ -128,12 +128,12 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
               placeholder="Type item for recommendations..."
               value={newItemName}
               onChange={handleInputChange}
-              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#252830] border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm text-gray-900 dark:text-white"
+              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-[#1C2026] border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm text-gray-900 dark:text-white"
             />
           </div>
 
           {suggestions.length > 0 && (
-            <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-[#252830] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+            <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-[#1C2026] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-52 overflow-y-auto">
               {suggestions.map((sug, idx) => (
                 <button
                   key={idx}
@@ -158,10 +158,10 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
           <select
             value={defaultPreference}
             onChange={(e) => setDefaultPreference(e.target.value as PreferenceMode)}
-            className="w-full px-3 py-2.5 bg-white dark:bg-[#252830] border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm font-medium text-gray-900 dark:text-white"
+            className="w-full px-3 py-2.5 bg-white dark:bg-[#1C2026] border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm font-medium text-gray-900 dark:text-white"
           >
-            <option value="cheapest">💰 Cheapest</option>
-            <option value="healthiest">❤️ Healthiest</option>
+            <option value="cheapest">💰 Price unverified</option>
+            <option value="healthiest">❤️ Health unverified</option>
             <option value="closest">📍 Closest</option>
           </select>
         </div>
@@ -181,7 +181,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
           <div className="text-center py-8 text-gray-400 text-sm font-medium">Your basket is empty. Add items above.</div>
         ) : (
           items.map(item => (
-            <div key={item.id} className="flex items-center justify-between p-3.5 bg-white dark:bg-[#252830] border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm transition-all">
+            <div key={item.id} className="flex items-center justify-between p-3.5 bg-white dark:bg-[#1C2026] border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm transition-all">
               <div className="flex items-center space-x-3">
                 <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                 <div>
@@ -199,8 +199,8 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
                     'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-400/10 dark:text-blue-300 dark:border-blue-400/20'
                   }`}
                 >
-                  <option value="cheapest">💰 Cheapest</option>
-                  <option value="healthiest">❤️ Healthiest</option>
+                  <option value="cheapest">💰 Price unverified</option>
+                  <option value="healthiest">❤️ Health unverified</option>
                   <option value="closest">📍 Closest</option>
                 </select>
                 <button
@@ -221,7 +221,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
         className="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-extrabold py-3.5 px-6 rounded-xl shadow-md flex items-center justify-center space-x-2 transition-all disabled:opacity-50 text-sm tracking-wide"
       >
         <Sparkles className="h-4 w-4" />
-        <span>{isLoading ? 'Computing Optimized Route...' : 'Construct Multi-Stop Route'}</span>
+        <span>{isLoading ? 'Computing Optimized Route...' : 'Plan Shopping Route'}</span>
       </button>
     </div>
   );
