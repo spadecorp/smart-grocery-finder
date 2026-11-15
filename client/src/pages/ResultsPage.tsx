@@ -8,7 +8,7 @@ import type { SearchResult, GroceryStore } from '../types'
 import type { ShoppingItem, OptimizedRoute } from '../types/basket'
 import { ShoppingListBuilder } from '../components/ShoppingListBuilder'
 import { computeOptimizedBasketRoute } from '../services/routeOptimizer'
-import { lookupNutrition, type NutritionResult } from '../services/productData'
+import { lookupNutrition, lookupStorePrices, type NutritionResult, type PriceObservation } from '../services/productData'
 
 function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [searchParams] = useSearchParams()
@@ -25,6 +25,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [step, setStep] = useState<'basket' | 'route'>('basket')
   const [nutrition, setNutrition] = useState<NutritionResult | null>(null)
   const [nutritionMessage, setNutritionMessage] = useState('')
+  const [priceEvidence, setPriceEvidence] = useState<Record<string, PriceObservation[]>>({})
 
   const { data: results, isLoading, error } = useQuery({
     queryKey: ['search-results', locationQuery, radiusMiles, selectedLat, selectedLon],
@@ -88,7 +89,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
             const storeLon = el.lon ?? el.center?.lon
             const defaultHours = tags.opening_hours || 'Not available'
             return {
-              id: `osm-${el.id || index}`,
+              id: `osm-${el.type}-${el.id || index}`,
               name,
               address: tags['addr:street'] ? `${tags['addr:housenumber'] || ''} ${tags['addr:street']}, ${cityName}` : `${cityName}, ${stateName} ${zipcode}`,
               latitude: storeLat,
@@ -141,12 +142,18 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
     setBasketItemNames(items.map(item => item.name))
     setNutrition(null)
     setNutritionMessage('')
+    setPriceEvidence({})
     try {
       // Automatic shortlist: up to three distinct nearby stores, ranked by
       // verified geographic proximity. Inventory and price data are unavailable.
       const nearestStores = results.stores.slice(0, Math.min(3, results.stores.length))
       setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, items, nearestStores))
       setStep('route')
+      const observed = await Promise.all(nearestStores.map(async store => {
+        try { return [store.id, await lookupStorePrices(store.id)] as const }
+        catch { return [store.id, [] as PriceObservation[]] as const }
+      }))
+      setPriceEvidence(Object.fromEntries(observed))
       try {
         const data = await lookupNutrition(items.map(item => item.name))
         if (data) setNutrition(data)
@@ -282,6 +289,23 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                         <span className="whitespace-nowrap">Nutri-Score: {match.nutriScore || 'N/A'}</span>
                       </div>
                     )) : <p className="text-xs text-gray-400">No verified product match available</p>}
+                  </div>
+                ))}
+              </section>
+              <section className="border border-[#2C3037] rounded-xl p-4 mb-5">
+                <h3 className="font-bold mb-2">Your grocery list at nearby stores</h3>
+                <p className="text-xs text-gray-400 mb-3">Prices are dated observations, not current inventory. Missing data means unknown.</p>
+                {optimizedRoute.stops.map(stop => (
+                  <div key={stop.storeId} className="border-t border-[#2C3037] py-3">
+                    <p className="font-semibold text-sm mb-2">{stop.storeName}</p>
+                    {basketItemNames.map(item => {
+                      const words = item.toLowerCase().split(/\s+/).filter(word => word.length > 2)
+                      const match = (priceEvidence[stop.storeId] || []).find(obs => words.length > 0 && words.every(word => obs.name.toLowerCase().includes(word)))
+                      return <div key={item} className="flex justify-between gap-2 text-xs text-gray-400 py-1">
+                        <span>{item}</span>
+                        <span>{match ? String(match.price) + ' ' + (match.currency || '') + ' • ' + match.date : 'Price / stock unknown'}</span>
+                      </div>
+                    })}
                   </div>
                 ))}
               </section>
