@@ -23,28 +23,9 @@ export function computeOptimizedBasketRoute(
     throw new Error('No stores or items available for route optimization.');
   }
 
-  // 1. Match each basket item to its optimal store based on user preference
-  const storeMap = new Map<string, { store: GroceryStore; items: string[] }>();
-
-  items.forEach(item => {
-    let targetStore: GroceryStore;
-
-    if (item.preference === 'closest') {
-      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
-    } else if (item.preference === 'healthiest') {
-      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
-    } else {
-      // cheapest
-      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
-    }
-
-    if (!storeMap.has(targetStore.id)) {
-      storeMap.set(targetStore.id, { store: targetStore, items: [] });
-    }
-    storeMap.get(targetStore.id)!.items.push(item.name);
-  });
-
-  const selectedStores = Array.from(storeMap.values());
+  // The user chooses stores explicitly. We cannot assign individual products
+  // without verified store-level inventory, so items remain an unassigned checklist.
+  const selectedStores = availableStores.map(store => ({ store, items: [] as string[] }));
 
   // 2. Solve multi-stop TSP using Nearest Neighbor Algorithm starting from user location
   let currentLocation = { lat: userLocation.latitude, lng: userLocation.longitude };
