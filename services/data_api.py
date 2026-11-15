@@ -12,6 +12,7 @@ import json
 import os
 import re
 import time
+from datetime import date, timedelta
 
 PORT = int(os.getenv("SMART_GROCER_DATA_PORT", "8765"))
 USER_AGENT = "SPaDeSmartGrocer/0.2 (https://github.com/spadecorp/smart-grocery-finder)"
@@ -92,6 +93,38 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/api/store-prices":
+            params = parse_qs(parsed.query)
+            osm_id = (params.get("osm_id") or [""])[0]
+            osm_type = (params.get("osm_type") or [""])[0].upper()
+            if not osm_id.isdigit() or osm_type not in ("NODE", "WAY", "RELATION"):
+                return self.respond(400, {"error": "Valid OSM ID and type required"})
+            url = "https://prices.openfoodfacts.org/api/v1/prices?" + urlencode({
+                "location_osm_id": osm_id, "location_osm_type": osm_type,
+                "size": 100, "order_by": "-date", "duplicate_of__isnull": "true"
+            })
+            try:
+                data = fetch_json(url)
+                cutoff = (date.today() - timedelta(days=180)).isoformat()
+                observations = []
+                for row in data.get("items", []):
+                    product = row.get("product") or {}
+                    name = row.get("product_name") or product.get("product_name") or ""
+                    if not name or not row.get("date") or row["date"] < cutoff:
+                        continue
+                    try:
+                        amount = float(row.get("price"))
+                    except (ValueError, TypeError):
+                        continue
+                    if amount <= 0:
+                        continue
+                    observations.append({"name": name, "barcode": row.get("product_code"),
+                        "price": amount, "currency": row.get("currency"),
+                        "date": row["date"], "source": "Open Prices"})
+                return self.respond(200, {"observations": observations, "source": "Open Prices",
+                    "note": "Observed prices do not establish current stock or complete basket coverage."})
+            except Exception:
+                return self.respond(503, {"error": "Open Prices currently unavailable"})
         if parsed.path == "/health":
             return self.respond(200, {"status": "ok"})
         if parsed.path != "/api/nutrition":
