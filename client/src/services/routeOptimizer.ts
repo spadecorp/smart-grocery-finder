@@ -32,10 +32,10 @@ export function computeOptimizedBasketRoute(
     if (item.preference === 'closest') {
       targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
     } else if (item.preference === 'healthiest') {
-      targetStore = [...availableStores].sort((a, b) => b.healthScore - a.healthScore)[0];
+      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
     } else {
       // cheapest
-      targetStore = [...availableStores].sort((a, b) => b.priceScore - a.priceScore)[0];
+      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
     }
 
     if (!storeMap.has(targetStore.id)) {
@@ -58,10 +58,7 @@ export function computeOptimizedBasketRoute(
     let minDistance = Infinity;
 
     unvisited.forEach((entry, idx) => {
-      // Estimate store coordinates based on distance and random offset or actual geocode
-      const storeLat = currentLocation.lat + (Math.random() - 0.5) * 0.05;
-      const storeLng = currentLocation.lng + (Math.random() - 0.5) * 0.05;
-      const dist = calculateDistance(currentLocation.lat, currentLocation.lng, storeLat, storeLng);
+      const dist = calculateDistance(currentLocation.lat, currentLocation.lng, entry.store.latitude, entry.store.longitude);
       if (dist < minDistance) {
         minDistance = dist;
         nearestIndex = idx;
@@ -75,19 +72,20 @@ export function computeOptimizedBasketRoute(
       storeId: nextStop.store.id,
       storeName: nextStop.store.name,
       address: nextStop.store.address,
-      latitude: currentLocation.lat + 0.01,
-      longitude: currentLocation.lng + 0.01,
+      latitude: nextStop.store.latitude,
+      longitude: nextStop.store.longitude,
       itemsToBuy: nextStop.items
     });
 
-    currentLocation = { lat: currentLocation.lat + 0.01, lng: currentLocation.lng + 0.01 };
+    currentLocation = { lat: nextStop.store.latitude, lng: nextStop.store.longitude };
   }
 
   // Add return trip back to home location
   const returnDist = calculateDistance(currentLocation.lat, currentLocation.lng, userLocation.latitude, userLocation.longitude);
   totalDistance += returnDist;
 
-  const estimatedDurationMins = Math.round(totalDistance * 3.5 + orderedStops.length * 10);
+  // Straight-line distance is not a driving route; avoid implying accurate travel times.
+  const estimatedDurationMins = 0;
 
   return {
     origin: userLocation,
