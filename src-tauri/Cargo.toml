@@ -1,0 +1,16 @@
+[package]
+name = "smart-grocer"
+version = "1.1.0"
+description = "SPaDe Corp Smart Grocer desktop app"
+authors = ["SPaDe Corp"]
+edition = "2021"
+
+[lib]
+name = "smart_grocer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

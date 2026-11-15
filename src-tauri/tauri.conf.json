@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Smart Grocer",
+  "version": "1.1.0",
+  "identifier": "com.spadecorp.smartgrocer",
+  "build": {
+    "beforeDevCommand": "npm --prefix client run dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "npm --prefix client run build",
+    "frontendDist": "../client/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Smart Grocer | SPaDe Corp",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 620
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "shortDescription": "SPaDe Corp Smart Grocer",
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}
