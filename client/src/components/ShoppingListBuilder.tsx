@@ -160,8 +160,8 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
             onChange={(e) => setDefaultPreference(e.target.value as PreferenceMode)}
             className="w-full px-3 py-2.5 bg-white dark:bg-[#1C2026] border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm font-medium text-gray-900 dark:text-white"
           >
-            <option value="cheapest">💰 Price unverified</option>
-            <option value="healthiest">❤️ Health unverified</option>
+            <option value="cheapest">💰 Cheapest</option>
+            <option value="healthiest">❤️ Healthiest</option>
             <option value="closest">📍 Closest</option>
           </select>
         </div>
@@ -199,8 +199,8 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
                     'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-400/10 dark:text-blue-300 dark:border-blue-400/20'
                   }`}
                 >
-                  <option value="cheapest">💰 Price unverified</option>
-                  <option value="healthiest">❤️ Health unverified</option>
+                  <option value="cheapest">💰 Cheapest</option>
+                  <option value="healthiest">❤️ Healthiest</option>
                   <option value="closest">📍 Closest</option>
                 </select>
                 <button
