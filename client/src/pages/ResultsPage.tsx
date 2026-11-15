@@ -12,6 +12,8 @@ import { computeOptimizedBasketRoute } from '../services/routeOptimizer'
 function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [searchParams] = useSearchParams()
   const locationQuery = searchParams.get('location') || ''
+  const selectedLat = searchParams.get('lat')
+  const selectedLon = searchParams.get('lon')
   const radiusMiles = [5, 10, 15, 25, 50].includes(Number(searchParams.get('radius'))) ? Number(searchParams.get('radius')) : 10
   const rawItemsParam = searchParams.get('item') || 'Whole Wheat Bread, Organic Milk, Bananas'
   const initialItemsList = rawItemsParam.split(',').map(i => i.trim()).filter(Boolean)
@@ -23,13 +25,16 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const { data: results, isLoading, error } = useQuery({
     queryKey: ['search-results', locationQuery, radiusMiles],
     queryFn: async (): Promise<SearchResult> => {
-      let lat = 41.8781
-      let lon = -87.6298
+      let lat = NaN
+      let lon = NaN
       let cityName = locationQuery.split(',')[0] || 'Hub Location'
       let stateName = 'US'
       let zipcode = locationQuery.match(/\b\d{5}\b/)?.[0] || '00000'
 
-      try {
+      if (selectedLat && selectedLon && Number.isFinite(Number(selectedLat)) && Number.isFinite(Number(selectedLon)) && Math.abs(Number(selectedLat)) <= 90 && Math.abs(Number(selectedLon)) <= 180) {
+        lat = Number(selectedLat)
+        lon = Number(selectedLon)
+      } else try {
         const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}&limit=1`, {
           headers: { 'User-Agent': 'SmartGroceryFinder/1.0' }
         })
@@ -49,42 +54,45 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
         console.warn('Nominatim geocode warning:', e)
       }
 
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Address could not be verified. Please choose a location suggestion and try again.')
       const userLocation = { latitude: lat, longitude: lon, zipcode, city: cityName, state: stateName }
 
       let stores: GroceryStore[] = []
+      let storeFetchError = false
       try {
         const overpassQuery = `
           [out:json][timeout:15];
           (
-            node["shop"~"supermarket|grocery"](around:${Math.round(radiusMiles * 1609.344)}, ${lat}, ${lon});
-            way["shop"~"supermarket|grocery"](around:15000, ${lat}, ${lon});
+            node["shop"~"^(supermarket|grocery)$"](around:${Math.round(radiusMiles * 1609.344)}, ${lat}, ${lon});
+            way["shop"~"^(supermarket|grocery)$"](around:15000, ${lat}, ${lon});
           );
-          out center 20;
+          out center;
         `
         const osmRes = await fetch('https://overpass-api.de/api/interpreter', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: overpassQuery
         })
+        if (!osmRes.ok) throw new Error(`Store service returned ${osmRes.status}`)
         if (osmRes.ok) {
           const osmData = await osmRes.json()
-          const elements = osmData.elements || []
+          const elements = (osmData.elements || []).filter((el: any) => el.tags?.name || el.tags?.brand)
           stores = elements.map((el: any, index: number) => {
             const tags = el.tags || {}
             const name = tags.name || tags.brand || `Store #${index + 1}`
-            const storeLat = el.lat || el.center?.lat || (lat + (index % 2 === 0 ? 1 : -1) * (index + 1) * 0.008)
-            const storeLon = el.lon || el.center?.lon || (lon + (index % 3 === 0 ? 1 : -1) * (index + 1) * 0.008)
-            const defaultHours = tags.opening_hours || '8:00 AM - 9:00 PM'
+            const storeLat = el.lat ?? el.center?.lat
+            const storeLon = el.lon ?? el.center?.lon
+            const defaultHours = tags.opening_hours || 'Not available'
             return {
               id: `osm-${el.id || index}`,
               name,
               address: tags['addr:street'] ? `${tags['addr:housenumber'] || ''} ${tags['addr:street']}, ${cityName}` : `${cityName}, ${stateName} ${zipcode}`,
               latitude: storeLat,
               longitude: storeLon,
-              distance: parseFloat((Math.random() * 3.5 + 0.4).toFixed(1)),
-              rating: tags.rating ? parseFloat(tags.rating) : 4.3,
-              healthScore: name.toLowerCase().includes('whole foods') || name.toLowerCase().includes('organic') ? 9.5 : (index % 2 === 0 ? 8.2 : 7.4),
-              priceScore: name.toLowerCase().includes('aldi') || name.toLowerCase().includes('walmart') ? 9.3 : (index % 2 === 0 ? 7.6 : 8.5),
+              distance: 3958.8 * 2 * Math.asin(Math.sqrt(Math.sin((storeLat-lat)*Math.PI/360)**2 + Math.cos(lat*Math.PI/180)*Math.cos(storeLat*Math.PI/180)*Math.sin((storeLon-lon)*Math.PI/360)**2)),
+              rating: 0,
+              healthScore: 0,
+              priceScore: 0,
               categories: ['Supermarket'],
               hours: {
                 monday: defaultHours, tuesday: defaultHours, wednesday: defaultHours, thursday: defaultHours, friday: defaultHours, saturday: defaultHours, sunday: defaultHours
@@ -92,34 +100,27 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
               phone: tags.phone || '',
               website: tags.website || ''
             }
-          })
+          }).filter((store: GroceryStore) => Number.isFinite(store.latitude) && Number.isFinite(store.longitude) && Number.isFinite(store.distance) && store.distance <= radiusMiles)
+          stores = Array.from(new Map(stores.map(store => [`${store.name.toLowerCase()}-${store.latitude.toFixed(4)}-${store.longitude.toFixed(4)}`, store])).values())
         }
       } catch (e) {
         console.warn('Overpass fetch warning:', e)
+        storeFetchError = true
       }
 
-      if (stores.length < 3) {
-        const fallbackHours = {
-          monday: '8:00 AM - 9:00 PM', tuesday: '8:00 AM - 9:00 PM', wednesday: '8:00 AM - 9:00 PM',
-          thursday: '8:00 AM - 9:00 PM', friday: '8:00 AM - 9:00 PM', saturday: '8:00 AM - 9:00 PM', sunday: '8:00 AM - 9:00 PM'
-        }
-        stores = [
-          { id: 'store-1', name: "Local Fresh Market", address: `${cityName}, ${stateName} ${zipcode}`, latitude: lat + 0.012, longitude: lon + 0.010, distance: 1.2, rating: 4.6, healthScore: 9.1, priceScore: 7.8, categories: ['Supermarket'], hours: fallbackHours, phone: '', website: '' },
-          { id: 'store-2', name: 'SuperSaver Grocers', address: `${cityName}, ${stateName} ${zipcode}`, latitude: lat - 0.010, longitude: lon + 0.014, distance: 2.3, rating: 4.3, healthScore: 7.2, priceScore: 9.4, categories: ['Supermarket'], hours: fallbackHours, phone: '', website: '' },
-          { id: 'store-3', name: 'Organic & Natural Hub', address: `${cityName}, ${stateName} ${zipcode}`, latitude: lat + 0.015, longitude: lon - 0.012, distance: 3.1, rating: 4.8, healthScore: 9.8, priceScore: 6.9, categories: ['Supermarket'], hours: fallbackHours, phone: '', website: '' }
-        ]
-      }
+      if (storeFetchError) throw new Error('Store discovery service is unavailable. Please try again shortly.')
+      if (!stores.length) throw new Error(`No verified grocery stores found within ${radiusMiles} miles. Try increasing the search radius.`)
 
       const sortedByDistance = [...stores].sort((a, b) => a.distance - b.distance)
-      const sortedByHealth = [...stores].sort((a, b) => b.healthScore - a.healthScore)
-      const sortedByBudget = [...stores].sort((a, b) => b.priceScore - a.priceScore)
+      const sortedByHealth = [...stores].sort((a, b) => a.distance - b.distance)
+      const sortedByBudget = [...stores].sort((a, b) => a.distance - b.distance)
 
       return {
         userLocation,
         searchedItem: initialItemsList[0] || 'Groceries',
         shortest: sortedByDistance[0],
-        healthiest: sortedByHealth[0],
-        budgetFriendly: sortedByBudget[0] || sortedByDistance[1]
+        healthiest: sortedByHealth[1] || sortedByDistance[0],
+        budgetFriendly: sortedByBudget[2] || sortedByDistance[0]
       }
     },
     enabled: !!locationQuery,
@@ -212,7 +213,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
           </div>
           <div className="flex items-center space-x-3 text-xs font-medium bg-gray-500/10 border border-gray-500/20 px-4 py-2.5 rounded-xl font-mono">
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span>TSP MULTI-STOP ENGINE READY</span>
+            <span>STORE DISCOVERY • ESTIMATED ROUTE</span>
           </div>
         </div>
       </motion.div>
@@ -244,11 +245,11 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                 </div>
                 <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#252830] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
                   <p className="text-xs text-gray-400 font-medium mb-1">Total Distance</p>
-                  <p className="text-xl font-extrabold">{optimizedRoute.totalDistanceMiles.toFixed(1)} miles</p>
+                  <p className="text-xl font-extrabold">{optimizedRoute.totalDistanceMiles.toFixed(1)} mi (straight-line)</p>
                 </div>
                 <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#252830] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
                   <p className="text-xs text-gray-400 font-medium mb-1">Est. Duration</p>
-                  <p className="text-xl font-extrabold">{optimizedRoute.estimatedDurationMins} mins</p>
+                  <p className="text-xl font-extrabold">Not calculated</p>
                 </div>
               </div>
 
@@ -321,7 +322,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
             </MapContainer>
           </div>
           <p className="text-[11px] text-gray-400 font-mono mt-3 text-center">
-            Origin & Destination: Hub {results.userLocation.city} • Multi-stop route connected via TSP polyline.
+            Origin & Destination: Hub {results.userLocation.city} • Multi-stop route connected via straight-line segments; not driving directions.
           </p>
         </div>
       </div>
