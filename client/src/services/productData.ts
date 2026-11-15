@@ -23,3 +23,15 @@ export async function lookupNutrition(items: string[]): Promise<NutritionResult 
   if (!response.ok) throw new Error('Nutrition lookup unavailable')
   return response.json() as Promise<NutritionResult>
 }
+
+export interface PriceObservation { name: string; barcode: string | null; price: number; currency: string | null; date: string; source: string }
+export async function lookupStorePrices(storeId: string): Promise<PriceObservation[]> {
+  const api = import.meta.env.VITE_DATA_API_URL
+  const match = /^osm-(node|way|relation)-(\d+)$/.exec(storeId)
+  if (!api || !match) return []
+  const params = new URLSearchParams({ osm_type: match[1].toUpperCase(), osm_id: match[2] })
+  const response = await fetch(api + '/api/store-prices?' + params.toString())
+  if (!response.ok) return []
+  const data = await response.json()
+  return Array.isArray(data.observations) ? data.observations : []
+}
