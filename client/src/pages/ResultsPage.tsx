@@ -11,7 +11,8 @@ import { computeOptimizedBasketRoute } from '../services/routeOptimizer'
 
 function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [searchParams] = useSearchParams()
-  const locationQuery = searchParams.get('location') || '63368'
+  const locationQuery = searchParams.get('location') || ''
+  const radiusMiles = [5, 10, 15, 25, 50].includes(Number(searchParams.get('radius'))) ? Number(searchParams.get('radius')) : 10
   const rawItemsParam = searchParams.get('item') || 'Whole Wheat Bread, Organic Milk, Bananas'
   const initialItemsList = rawItemsParam.split(',').map(i => i.trim()).filter(Boolean)
 
@@ -20,7 +21,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [isOptimizing, setIsOptimizing] = useState(false)
 
   const { data: results, isLoading, error } = useQuery({
-    queryKey: ['search-results', locationQuery],
+    queryKey: ['search-results', locationQuery, radiusMiles],
     queryFn: async (): Promise<SearchResult> => {
       let lat = 41.8781
       let lon = -87.6298
@@ -55,7 +56,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
         const overpassQuery = `
           [out:json][timeout:15];
           (
-            node["shop"~"supermarket|grocery"](around:15000, ${lat}, ${lon});
+            node["shop"~"supermarket|grocery"](around:${Math.round(radiusMiles * 1609.344)}, ${lat}, ${lon});
             way["shop"~"supermarket|grocery"](around:15000, ${lat}, ${lon});
           );
           out center 20;
@@ -203,7 +204,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <span className="bg-amber-400/20 text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded font-mono">LIVE NODE</span>
-              <span className="text-xs text-gray-400 font-mono">HUB: {results.userLocation.zipcode} ({results.userLocation.city})</span>
+              <span className="text-xs text-gray-400 font-mono">HUB: {results.userLocation.zipcode} ({results.userLocation.city}) • {radiusMiles} mi radius</span>
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight">
               Route Execution • {results.userLocation.city}, {results.userLocation.state}
