@@ -8,6 +8,7 @@ import type { SearchResult, GroceryStore } from '../types'
 import type { ShoppingItem, OptimizedRoute } from '../types/basket'
 import { ShoppingListBuilder } from '../components/ShoppingListBuilder'
 import { computeOptimizedBasketRoute } from '../services/routeOptimizer'
+import { lookupNutrition, type NutritionResult } from '../services/productData'
 
 function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [searchParams] = useSearchParams()
@@ -22,6 +23,8 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [step, setStep] = useState<'basket' | 'route'>('basket')
+  const [nutrition, setNutrition] = useState<NutritionResult | null>(null)
+  const [nutritionMessage, setNutritionMessage] = useState('')
 
   const { data: results, isLoading, error } = useQuery({
     queryKey: ['search-results', locationQuery, radiusMiles, selectedLat, selectedLon],
@@ -132,16 +135,25 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
     return results.stores
   }
 
-  const handleCalculateRoute = (items: ShoppingItem[]) => {
+  const handleCalculateRoute = async (items: ShoppingItem[]) => {
     if (!results || !items.length) return
     setIsOptimizing(true)
     setBasketItemNames(items.map(item => item.name))
+    setNutrition(null)
+    setNutritionMessage('')
     try {
       // Automatic shortlist: up to three distinct nearby stores, ranked by
       // verified geographic proximity. Inventory and price data are unavailable.
       const nearestStores = results.stores.slice(0, Math.min(3, results.stores.length))
       setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, items, nearestStores))
       setStep('route')
+      try {
+        const data = await lookupNutrition(items.map(item => item.name))
+        if (data) setNutrition(data)
+        else setNutritionMessage('Nutrition service not configured; geographic recommendations only.')
+      } catch {
+        setNutritionMessage('Nutrition lookup unavailable; geographic recommendations only.')
+      }
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Unable to plan route.')
     } finally {
@@ -257,6 +269,22 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
               </div>
 
               <p className="text-xs text-gray-400 mb-4">Stores are selected automatically by proximity. Product availability, prices and nutritional rankings cannot be verified with the current data source; multiple stops are suggested for comparison, not because every stop is required.</p>
+              <section className="border border-[#2C3037] rounded-xl p-4 mb-5">
+                <h3 className="font-bold mb-2">Nutrition research • Open Food Facts</h3>
+                <p className="text-xs text-gray-400 mb-3">Product candidates, not verified store inventory or healthiest-store rankings.</p>
+                {nutritionMessage && <p className="text-sm text-gray-400">{nutritionMessage}</p>}
+                {nutrition?.items.map(entry => (
+                  <div key={entry.item} className="border-t border-[#2C3037] py-2">
+                    <p className="font-semibold text-sm">{entry.item}</p>
+                    {entry.matches.length ? entry.matches.map(match => (
+                      <div key={match.barcode || match.name} className="flex justify-between gap-3 text-xs text-gray-400 mt-1">
+                        <span>{match.name} {match.brand} {match.quantity}</span>
+                        <span className="whitespace-nowrap">Nutri-Score: {match.nutriScore || 'N/A'}</span>
+                      </div>
+                    )) : <p className="text-xs text-gray-400">No verified product match available</p>}
+                  </div>
+                ))}
+              </section>
               {/* Stops List */}
               <div className="space-y-4">
                 {optimizedRoute.stops.map((stop, idx) => (
