@@ -41,6 +41,7 @@ export interface SearchRequest {
 }
 
 export interface SearchResult {
+  stores: GroceryStore[];
   shortest: GroceryStore;
   healthiest: GroceryStore;
   budgetFriendly: GroceryStore;

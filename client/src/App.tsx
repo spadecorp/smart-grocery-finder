@@ -8,7 +8,7 @@ import AboutPage from './pages/AboutPage'
 
 export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem('spade_theme') === 'dark'
+    return localStorage.getItem('spade_theme') !== 'light'
   })
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function App() {
   }, [darkMode])
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'bg-[#141619] text-gray-100 dark' : 'bg-[#F9F8F3] text-gray-900'}`}>
+    <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'bg-[#0E1013] text-[#EEF0F2] dark' : 'bg-[#F5F5F4] text-gray-900'}`}>
       <Header darkMode={darkMode} onToggleTheme={() => setDarkMode(!darkMode)} />
       
       <motion.main
@@ -32,13 +32,13 @@ export default function App() {
         </Routes>
       </motion.main>
       
-      <footer className={`${darkMode ? 'bg-[#0f1113] border-gray-800 text-gray-400' : 'bg-gray-900 border-gray-800 text-gray-400'} py-10 mt-20 border-t`}>
+      <footer className={`${darkMode ? 'bg-[#0E1013] border-gray-800 text-gray-400' : 'bg-gray-900 border-gray-800 text-gray-400'} py-10 mt-20 border-t`}>
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between text-xs font-mono">
           <p>© 2026 SPaDe Corp Domestic Intelligence. All rights reserved.</p>
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <span>CLIENT-SIDE TSP v2.4</span>
+            <span>SMART GROCER • SPaDe CORP</span>
             <span>•</span>
-            <span>ZERO BACKEND DEPENDENCY</span>
+            <span>STORE DATA: OPENSTREETMAP</span>
           </div>
         </div>
       </footer>

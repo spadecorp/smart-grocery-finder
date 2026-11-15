@@ -23,32 +23,31 @@ export function computeOptimizedBasketRoute(
     throw new Error('No stores or items available for route optimization.');
   }
 
-  // 1. Match each basket item to its optimal store based on user preference
-  const storeMap = new Map<string, { store: GroceryStore; items: string[] }>();
-
-  items.forEach(item => {
-    let targetStore: GroceryStore;
-
-    if (item.preference === 'closest') {
-      targetStore = [...availableStores].sort((a, b) => a.distance - b.distance)[0];
-    } else if (item.preference === 'healthiest') {
-      targetStore = [...availableStores].sort((a, b) => b.healthScore - a.healthScore)[0];
-    } else {
-      // cheapest
-      targetStore = [...availableStores].sort((a, b) => b.priceScore - a.priceScore)[0];
+  // Heuristic category assignment, not a stock claim. Each basket item belongs
+  // to one suggested stop. Minimize unnecessary stops where possible.
+  const selectedStores = availableStores.map(store => ({ store, items: [] as string[] }));
+  const specialty = (name: string) => /fresh thyme|whole foods|natural grocers|sprouts|trader joe|organic|health food/i.test(name);
+  const budget = (name: string) => /aldi|lidl|save a lot|walmart|costco|sam's club|dollar|discount/i.test(name);
+  for (const item of items) {
+    let choices = selectedStores;
+    if (item.preference === 'healthiest') {
+      const healthyStores = choices.filter(entry => specialty(entry.store.name));
+      if (healthyStores.length) choices = healthyStores;
+    } else if (item.preference === 'cheapest') {
+      const discountStores = choices.filter(entry => budget(entry.store.name));
+      if (discountStores.length) choices = discountStores;
     }
+    // Prefer a store already in the itinerary, then proximity.
+    const chosen = [...choices].sort((a,b) =>
+      (a.items.length ? 0 : 1) - (b.items.length ? 0 : 1) ||
+      a.store.distance - b.store.distance)[0];
+    chosen.items.push(item.name);
+  }
+  const activeStores = selectedStores.filter(entry => entry.items.length > 0);
 
-    if (!storeMap.has(targetStore.id)) {
-      storeMap.set(targetStore.id, { store: targetStore, items: [] });
-    }
-    storeMap.get(targetStore.id)!.items.push(item.name);
-  });
-
-  const selectedStores = Array.from(storeMap.values());
-
-  // 2. Solve multi-stop TSP using Nearest Neighbor Algorithm starting from user location
+  // Order only the selected item-assigned stops by nearest-neighbor distance.
   let currentLocation = { lat: userLocation.latitude, lng: userLocation.longitude };
-  let unvisited = [...selectedStores];
+  let unvisited = [...activeStores];
   const orderedStops: StoreStop[] = [];
   let totalDistance = 0;
 
@@ -58,10 +57,7 @@ export function computeOptimizedBasketRoute(
     let minDistance = Infinity;
 
     unvisited.forEach((entry, idx) => {
-      // Estimate store coordinates based on distance and random offset or actual geocode
-      const storeLat = currentLocation.lat + (Math.random() - 0.5) * 0.05;
-      const storeLng = currentLocation.lng + (Math.random() - 0.5) * 0.05;
-      const dist = calculateDistance(currentLocation.lat, currentLocation.lng, storeLat, storeLng);
+      const dist = calculateDistance(currentLocation.lat, currentLocation.lng, entry.store.latitude, entry.store.longitude);
       if (dist < minDistance) {
         minDistance = dist;
         nearestIndex = idx;
@@ -75,19 +71,20 @@ export function computeOptimizedBasketRoute(
       storeId: nextStop.store.id,
       storeName: nextStop.store.name,
       address: nextStop.store.address,
-      latitude: currentLocation.lat + 0.01,
-      longitude: currentLocation.lng + 0.01,
+      latitude: nextStop.store.latitude,
+      longitude: nextStop.store.longitude,
       itemsToBuy: nextStop.items
     });
 
-    currentLocation = { lat: currentLocation.lat + 0.01, lng: currentLocation.lng + 0.01 };
+    currentLocation = { lat: nextStop.store.latitude, lng: nextStop.store.longitude };
   }
 
   // Add return trip back to home location
   const returnDist = calculateDistance(currentLocation.lat, currentLocation.lng, userLocation.latitude, userLocation.longitude);
   totalDistance += returnDist;
 
-  const estimatedDurationMins = Math.round(totalDistance * 3.5 + orderedStops.length * 10);
+  // Straight-line distance is not a driving route; avoid implying accurate travel times.
+  const estimatedDurationMins = 0;
 
   return {
     origin: userLocation,
