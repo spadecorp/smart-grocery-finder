@@ -144,9 +144,8 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
     setNutritionMessage('')
     setPriceEvidence({})
     try {
-      // Automatic shortlist: up to three distinct nearby stores, ranked by
-      // verified geographic proximity. Inventory and price data are unavailable.
-      const nearestStores = results.stores.slice(0, Math.min(3, results.stores.length))
+      // Candidate stores are ranked by distance; item preferences drive assignment.
+      const nearestStores = results.stores.slice(0, Math.min(12, results.stores.length))
       setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, items, nearestStores))
       setStep('route')
       const observed = await Promise.all(nearestStores.map(async store => {
@@ -259,56 +258,11 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                 </button>
               </div>
 
-              {/* Summary Metrics */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#252830] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                  <p className="text-xs text-gray-400 font-medium mb-1">Total Stops</p>
-                  <p className="text-xl font-extrabold">{optimizedRoute.stops.length} Stores</p>
-                </div>
-                <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#252830] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                  <p className="text-xs text-gray-400 font-medium mb-1">Total Distance</p>
-                  <p className="text-xl font-extrabold">{optimizedRoute.totalDistanceMiles.toFixed(1)} mi (straight-line)</p>
-                </div>
-                <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#252830] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                  <p className="text-xs text-gray-400 font-medium mb-1">Est. Duration</p>
-                  <p className="text-xl font-extrabold">Not calculated</p>
-                </div>
+              <div className="rounded-xl border border-[#2C3037] p-4 mb-5">
+                <p className="text-xs uppercase tracking-wider text-amber-400 font-semibold mb-1">Start & return</p>
+                <p className="font-semibold break-words">{locationQuery}</p>
               </div>
-
-              <p className="text-xs text-gray-400 mb-4">Stores are selected automatically by proximity. Product availability, prices and nutritional rankings cannot be verified with the current data source; multiple stops are suggested for comparison, not because every stop is required.</p>
-              <section className="border border-[#2C3037] rounded-xl p-4 mb-5">
-                <h3 className="font-bold mb-2">Nutrition research • Open Food Facts</h3>
-                <p className="text-xs text-gray-400 mb-3">Product candidates, not verified store inventory or healthiest-store rankings.</p>
-                {nutritionMessage && <p className="text-sm text-gray-400">{nutritionMessage}</p>}
-                {nutrition?.items.map(entry => (
-                  <div key={entry.item} className="border-t border-[#2C3037] py-2">
-                    <p className="font-semibold text-sm">{entry.item}</p>
-                    {entry.matches.length ? entry.matches.map(match => (
-                      <div key={match.barcode || match.name} className="flex justify-between gap-3 text-xs text-gray-400 mt-1">
-                        <span>{match.name} {match.brand} {match.quantity}</span>
-                        <span className="whitespace-nowrap">Nutri-Score: {match.nutriScore || 'N/A'}</span>
-                      </div>
-                    )) : <p className="text-xs text-gray-400">No verified product match available</p>}
-                  </div>
-                ))}
-              </section>
-              <section className="border border-[#2C3037] rounded-xl p-4 mb-5">
-                <h3 className="font-bold mb-2">Your grocery list at nearby stores</h3>
-                <p className="text-xs text-gray-400 mb-3">Prices are dated observations, not current inventory. Missing data means unknown.</p>
-                {optimizedRoute.stops.map(stop => (
-                  <div key={stop.storeId} className="border-t border-[#2C3037] py-3">
-                    <p className="font-semibold text-sm mb-2">{stop.storeName}</p>
-                    {basketItemNames.map(item => {
-                      const words = item.toLowerCase().split(/\s+/).filter(word => word.length > 2)
-                      const match = (priceEvidence[stop.storeId] || []).find(obs => words.length > 0 && words.every(word => obs.name.toLowerCase().includes(word)))
-                      return <div key={item} className="flex justify-between gap-2 text-xs text-gray-400 py-1">
-                        <span>{item}</span>
-                        <span>{match ? String(match.price) + ' ' + (match.currency || '') + ' • ' + match.date : 'Price / stock unknown'}</span>
-                      </div>
-                    })}
-                  </div>
-                ))}
-              </section>
+              <p className="text-xs text-gray-400 mb-4">Items are automatically assigned using store type and proximity, not verified stock, price or nutrition data. Route lines show approximate geographic connections.</p>
               {/* Stops List */}
               <div className="space-y-4">
                 {optimizedRoute.stops.map((stop, idx) => (
@@ -325,7 +279,9 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mb-3">{stop.address}</p>
-                    <p className="text-xs text-gray-400 mt-3">Check product availability with this store before visiting.</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {stop.itemsToBuy.map(item => <span key={item} className="text-xs bg-amber-400/10 text-amber-300 border border-amber-400/20 rounded-md px-2.5 py-1">{item}</span>)}
+                    </div>
                   </div>
                 ))}
               </div>
