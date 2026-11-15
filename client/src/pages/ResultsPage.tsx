@@ -23,13 +23,13 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [isOptimizing, setIsOptimizing] = useState(false)
 
   const { data: results, isLoading, error } = useQuery({
-    queryKey: ['search-results', locationQuery, radiusMiles],
+    queryKey: ['search-results', locationQuery, radiusMiles, selectedLat, selectedLon],
     queryFn: async (): Promise<SearchResult> => {
       let lat = NaN
       let lon = NaN
       let cityName = locationQuery.split(',')[0] || 'Hub Location'
-      let stateName = 'US'
-      let zipcode = locationQuery.match(/\b\d{5}\b/)?.[0] || '00000'
+      let stateName = ''
+      let zipcode = locationQuery.match(/\b\d{5}\b/)?.[0] || ''
 
       if (selectedLat && selectedLon && Number.isFinite(Number(selectedLat)) && Number.isFinite(Number(selectedLon)) && Math.abs(Number(selectedLat)) <= 90 && Math.abs(Number(selectedLon)) <= 180) {
         lat = Number(selectedLat)
@@ -64,7 +64,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
           [out:json][timeout:15];
           (
             node["shop"~"^(supermarket|grocery)$"](around:${Math.round(radiusMiles * 1609.344)}, ${lat}, ${lon});
-            way["shop"~"^(supermarket|grocery)$"](around:15000, ${lat}, ${lon});
+            way["shop"~"^(supermarket|grocery)$"](around:${Math.round(radiusMiles * 1609.344)}, ${lat}, ${lon});
           );
           out center;
         `
@@ -112,15 +112,14 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
       if (!stores.length) throw new Error(`No verified grocery stores found within ${radiusMiles} miles. Try increasing the search radius.`)
 
       const sortedByDistance = [...stores].sort((a, b) => a.distance - b.distance)
-      const sortedByHealth = [...stores].sort((a, b) => a.distance - b.distance)
-      const sortedByBudget = [...stores].sort((a, b) => a.distance - b.distance)
-
+      
       return {
         userLocation,
+        stores: sortedByDistance,
         searchedItem: initialItemsList[0] || 'Groceries',
         shortest: sortedByDistance[0],
-        healthiest: sortedByHealth[1] || sortedByDistance[0],
-        budgetFriendly: sortedByBudget[2] || sortedByDistance[0]
+        healthiest: sortedByDistance[1] || sortedByDistance[0],
+        budgetFriendly: sortedByDistance[2] || sortedByDistance[0]
       }
     },
     enabled: !!locationQuery,
@@ -129,7 +128,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
 
   const getAllStores = (): GroceryStore[] => {
     if (!results) return []
-    return [results.shortest, results.healthiest, results.budgetFriendly].filter(Boolean)
+    return results.stores
   }
 
   const handleCalculateRoute = (items: ShoppingItem[]) => {
