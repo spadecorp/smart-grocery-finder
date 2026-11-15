@@ -31,7 +31,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
         id: `${Date.now()}-${idx}`,
         name: name.trim(),
         category: matchedCat,
-        preference: 'cheapest'
+        preference: 'closest'
       };
     });
   });
@@ -44,7 +44,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
           id: `${Date.now()}-${idx}`,
           name: name.trim(),
           category: matchedCat,
-          preference: 'cheapest'
+          preference: 'closest'
         };
       })
     );
@@ -52,7 +52,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
 
   const [newItemName, setNewItemName] = useState('');
   const [suggestions, setSuggestions] = useState<typeof POPULAR_ITEMS>([]);
-  const [defaultPreference, setDefaultPreference] = useState<PreferenceMode>('cheapest');
+  const [defaultPreference, setDefaultPreference] = useState<PreferenceMode>('closest');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -109,7 +109,7 @@ export const ShoppingListBuilder: React.FC<ShoppingListBuilderProps> = ({ initia
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Active Shopping Basket</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Store prices, inventory and health ratings are not verified</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Closest store is used until product prices, inventory and health data can be verified</p>
           </div>
         </div>
         <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-lg text-xs font-bold font-mono">
