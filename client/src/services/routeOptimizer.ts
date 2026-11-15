@@ -23,13 +23,31 @@ export function computeOptimizedBasketRoute(
     throw new Error('No stores or items available for route optimization.');
   }
 
-  // The user chooses stores explicitly. We cannot assign individual products
-  // without verified store-level inventory, so items remain an unassigned checklist.
+  // Heuristic category assignment, not a stock claim. Each basket item belongs
+  // to one suggested stop. Minimize unnecessary stops where possible.
   const selectedStores = availableStores.map(store => ({ store, items: [] as string[] }));
+  const specialty = (name: string) => /fresh thyme|whole foods|natural grocers|sprouts|trader joe|organic|health food/i.test(name);
+  const budget = (name: string) => /aldi|lidl|save a lot|walmart|costco|sam's club|dollar|discount/i.test(name);
+  for (const item of items) {
+    let choices = selectedStores;
+    if (item.preference === 'healthiest') {
+      const healthyStores = choices.filter(entry => specialty(entry.store.name));
+      if (healthyStores.length) choices = healthyStores;
+    } else if (item.preference === 'cheapest') {
+      const discountStores = choices.filter(entry => budget(entry.store.name));
+      if (discountStores.length) choices = discountStores;
+    }
+    // Prefer a store already in the itinerary, then proximity.
+    const chosen = [...choices].sort((a,b) =>
+      (a.items.length ? 0 : 1) - (b.items.length ? 0 : 1) ||
+      a.store.distance - b.store.distance)[0];
+    chosen.items.push(item.name);
+  }
+  const activeStores = selectedStores.filter(entry => entry.items.length > 0);
 
-  // 2. Solve multi-stop TSP using Nearest Neighbor Algorithm starting from user location
+  // Order only the selected item-assigned stops by nearest-neighbor distance.
   let currentLocation = { lat: userLocation.latitude, lng: userLocation.longitude };
-  let unvisited = [...selectedStores];
+  let unvisited = [...activeStores];
   const orderedStops: StoreStop[] = [];
   let totalDistance = 0;
 
