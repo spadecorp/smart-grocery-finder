@@ -15,6 +15,7 @@ const POPULAR_ITEMS = [
 export default function SearchPage({ darkMode }: { darkMode: boolean }) {
   const navigate = useNavigate()
   const [location, setLocation] = useState('')
+  const [selectedLocation, setSelectedLocation] = useState<{lat: string; lon: string; label: string} | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([])
   const [isSearchingLoc, setIsSearchingLoc] = useState(false)
@@ -26,6 +27,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
 
   // Real-time location autocomplete via OpenStreetMap Nominatim API
   useEffect(() => {
+    if (selectedLocation?.label === location) return
     const query = location.trim()
     if (query.length < 2) {
       setLocationSuggestions([])
@@ -57,7 +59,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [location])
+  }, [location, selectedLocation])
 
   const handleItemInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -75,6 +77,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
     const params = new URLSearchParams({
       location: location.trim(),
       radius: String(radiusMiles),
+      ...(selectedLocation?.label === location ? { lat: selectedLocation.lat, lon: selectedLocation.lon } : {}),
       item: items.join(', ')
     })
     navigate(`/results?${params.toString()}`)
@@ -87,7 +90,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
           Smart Grocery Finder
         </h1>
         <p className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Type any address, city, or zipcode to instantly query live geospatial routing networks.
+          Find real grocery stores near your address and plan a practical shopping trip.
         </p>
       </div>
 
@@ -106,6 +109,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
               value={location}
               onChange={(e) => {
                 setLocation(e.target.value)
+                setSelectedLocation(null)
                 setShowLocSuggestions(true)
               }}
               onFocus={() => {
@@ -125,6 +129,8 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
                     type="button"
                     onClick={() => {
                       setLocation(loc.display_name)
+                      setSelectedLocation({ lat: loc.lat, lon: loc.lon, label: loc.display_name })
+                      setLocationSuggestions([])
                       setShowLocSuggestions(false)
                     }}
                     className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm border-b last:border-b-0 transition-colors ${darkMode ? 'hover:bg-[#2e323b] border-gray-700' : 'hover:bg-gray-50 border-gray-100'}`}
@@ -238,7 +244,7 @@ export default function SearchPage({ darkMode }: { darkMode: boolean }) {
           disabled={items.length === 0 || !location.trim()}
           className="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-extrabold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
         >
-          <span>Initialize Optimal TSP Route Engine</span>
+          <span>Find Stores & Plan Route</span>
           <ArrowRight className="h-5 w-5" />
         </button>
       </form>
