@@ -1,1 +1,12 @@
-.vercel
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+src-tauri/target/
+client/dist/
+dist/
+
+# Local environment
+.env
+.env.local
