@@ -300,16 +300,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mb-3">{stop.address}</p>
-                    <div className="border-t pt-3 border-gray-200 dark:border-gray-700">
-                      <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Product availability not verified</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {stop.itemsToBuy.map((itemName, i) => (
-                          <span key={i} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md font-medium">
-                            ✓ {itemName}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-3">Check product availability with this store before visiting.</p>
                   </div>
                 ))}
               </div>
