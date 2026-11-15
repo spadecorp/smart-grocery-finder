@@ -22,6 +22,8 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([])
+  const [step, setStep] = useState<'basket' | 'stores' | 'route'>('basket')
+  const [basketItems, setBasketItems] = useState<ShoppingItem[]>([])
 
   const { data: results, isLoading, error } = useQuery({
     queryKey: ['search-results', locationQuery, radiusMiles, selectedLat, selectedLon],
@@ -133,16 +135,20 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   }
 
   const handleCalculateRoute = (items: ShoppingItem[]) => {
-    if (!results) return
+    if (!items.length) return
+    setBasketItems(items)
+    setBasketItemNames(items.map(item => item.name))
+    setStep('stores')
+  }
+
+  const handleConfirmStores = () => {
+    if (!results || !selectedStoreIds.length) return
     setIsOptimizing(true)
-    setBasketItemNames(items.map(i => i.name))
     try {
       const stores = getAllStores().filter(store => selectedStoreIds.includes(store.id))
-      if (!stores.length) throw new Error('Select at least one grocery store before planning a route.')
-      const route = computeOptimizedBasketRoute(results.userLocation, items, stores)
-      setOptimizedRoute(route)
+      setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, basketItems, stores))
+      setStep('route')
     } catch (err) {
-      console.error('Route calculation failed:', err)
       window.alert(err instanceof Error ? err.message : 'Unable to plan route.')
     } finally {
       setIsOptimizing(false)
@@ -207,11 +213,12 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <span className="bg-amber-400/20 text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded font-mono">LIVE NODE</span>
-              <span className="text-xs text-gray-400 font-mono">HUB: {results.userLocation.zipcode} ({results.userLocation.city}) • {radiusMiles} mi radius</span>
+              <span className="text-xs text-gray-400 font-mono">SEARCH RADIUS: {radiusMiles} miles</span>
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight">
-              Route Execution • {results.userLocation.city}, {results.userLocation.state}
+              {step === 'basket' ? 'Your Shopping Basket' : step === 'stores' ? 'Choose Grocery Stores' : 'Your Shopping Route'}
             </h1>
+            <p className="text-sm text-gray-400 mt-2 break-words">{locationQuery}</p>
           </div>
           <div className="flex items-center space-x-3 text-xs font-medium bg-gray-500/10 border border-gray-500/20 px-4 py-2.5 rounded-xl font-mono">
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
@@ -223,7 +230,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
       {/* Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <section className={`rounded-2xl p-6 border ${darkMode ? 'bg-[#15181D] border-[#2C3037]' : 'bg-white border-gray-200'}`}>
+          {step === 'stores' && <section className={`rounded-2xl p-6 border ${darkMode ? 'bg-[#15181D] border-[#2C3037]' : 'bg-white border-gray-200'}`}>
             <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
               <div>
                 <h2 className="text-xl font-bold">Nearby Grocery Stores</h2>
@@ -251,8 +258,12 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-3">{selectedStoreIds.length} stores selected. Distances are straight-line estimates; inventory and prices are not verified.</p>
-          </section>
-          {optimizedRoute ? (
+            <div className="flex gap-3 mt-5">
+              <button type="button" onClick={() => setStep('basket')} className="px-5 py-3 rounded-xl border border-gray-600">Back to Basket</button>
+              <button type="button" onClick={handleConfirmStores} disabled={!selectedStoreIds.length || isOptimizing} className="flex-1 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-gray-900 font-bold rounded-xl px-5 py-3">Plan Route ({selectedStoreIds.length} stores)</button>
+            </div>
+          </section>}
+          {step === 'route' && optimizedRoute ? (
             <div className={`rounded-2xl shadow-sm p-6 border ${darkMode ? 'bg-[#1b1e23] border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                 <div>
@@ -260,7 +271,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                   <p className="text-xs text-gray-400 font-mono">Multi-stop trip starting & returning to hub {results.userLocation.zipcode} ({results.userLocation.city})</p>
                 </div>
                 <button
-                  onClick={() => setOptimizedRoute(null)}
+                  onClick={() => { setOptimizedRoute(null); setStep('basket') }}
                   className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-xl flex items-center space-x-1.5 transition-colors"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -305,9 +316,9 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : step === 'basket' ? (
             <ShoppingListBuilder initialItems={basketItemNames} onCalculateRoute={handleCalculateRoute} isLoading={isOptimizing} />
-          )}
+          ) : null}
         </div>
 
         {/* Interactive Map Sidebar */}
