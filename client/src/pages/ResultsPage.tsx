@@ -21,9 +21,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   const [basketItemNames, setBasketItemNames] = useState<string[]>(initialItemsList)
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([])
-  const [step, setStep] = useState<'basket' | 'stores' | 'route'>('basket')
-  const [basketItems, setBasketItems] = useState<ShoppingItem[]>([])
+  const [step, setStep] = useState<'basket' | 'route'>('basket')
 
   const { data: results, isLoading, error } = useQuery({
     queryKey: ['search-results', locationQuery, radiusMiles, selectedLat, selectedLon],
@@ -135,18 +133,14 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
   }
 
   const handleCalculateRoute = (items: ShoppingItem[]) => {
-    if (!items.length) return
-    setBasketItems(items)
-    setBasketItemNames(items.map(item => item.name))
-    setStep('stores')
-  }
-
-  const handleConfirmStores = () => {
-    if (!results || !selectedStoreIds.length) return
+    if (!results || !items.length) return
     setIsOptimizing(true)
+    setBasketItemNames(items.map(item => item.name))
     try {
-      const stores = getAllStores().filter(store => selectedStoreIds.includes(store.id))
-      setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, basketItems, stores))
+      // Automatic shortlist: up to three distinct nearby stores, ranked by
+      // verified geographic proximity. Inventory and price data are unavailable.
+      const nearestStores = results.stores.slice(0, Math.min(3, results.stores.length))
+      setOptimizedRoute(computeOptimizedBasketRoute(results.userLocation, items, nearestStores))
       setStep('route')
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Unable to plan route.')
@@ -216,7 +210,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
               <span className="text-xs text-gray-400 font-mono">SEARCH RADIUS: {radiusMiles} miles</span>
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight">
-              {step === 'basket' ? 'Your Shopping Basket' : step === 'stores' ? 'Choose Grocery Stores' : 'Your Shopping Route'}
+              {step === 'basket' ? 'Your Shopping Basket' : 'Your Shopping Route'}
             </h1>
             <p className="text-sm text-gray-400 mt-2 break-words">{locationQuery}</p>
           </div>
@@ -230,45 +224,12 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
       {/* Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {step === 'stores' && <section className={`rounded-2xl p-6 border ${darkMode ? 'bg-[#15181D] border-[#2C3037]' : 'bg-white border-gray-200'}`}>
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
-              <div>
-                <h2 className="text-xl font-bold">Nearby Grocery Stores</h2>
-                <p className="text-sm text-gray-400">{allStoresList.length} stores found within {radiusMiles} miles • select the stops you want to visit</p>
-              </div>
-              <div className="flex gap-3 text-sm">
-                <button type="button" onClick={() => setSelectedStoreIds(allStoresList.map(store => store.id))} className="text-amber-400 hover:underline">Select all</button>
-                <button type="button" onClick={() => setSelectedStoreIds([])} className="text-gray-400 hover:underline">Clear</button>
-              </div>
-            </div>
-            <div className="max-h-80 overflow-y-auto space-y-2">
-              {allStoresList.map(store => (
-                <label key={store.id} className="flex gap-3 items-start p-3 border border-[#2C3037] rounded-xl cursor-pointer hover:border-amber-400">
-                  <input type="checkbox" className="mt-1 accent-amber-400" checked={selectedStoreIds.includes(store.id)}
-                    onChange={e => {
-                      setOptimizedRoute(null)
-                      setSelectedStoreIds(prev => e.target.checked ? [...prev, store.id] : prev.filter(id => id !== store.id))
-                    }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold">{store.name}</div>
-                    <div className="text-xs text-gray-400">{store.address}</div>
-                  </div>
-                  <span className="text-xs text-amber-400 font-mono whitespace-nowrap">{store.distance.toFixed(1)} mi</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-3">{selectedStoreIds.length} stores selected. Distances are straight-line estimates; inventory and prices are not verified.</p>
-            <div className="flex gap-3 mt-5">
-              <button type="button" onClick={() => setStep('basket')} className="px-5 py-3 rounded-xl border border-gray-600">Back to Basket</button>
-              <button type="button" onClick={handleConfirmStores} disabled={!selectedStoreIds.length || isOptimizing} className="flex-1 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 text-gray-900 font-bold rounded-xl px-5 py-3">Plan Route ({selectedStoreIds.length} stores)</button>
-            </div>
-          </section>}
           {step === 'route' && optimizedRoute ? (
             <div className={`rounded-2xl shadow-sm p-6 border ${darkMode ? 'bg-[#1b1e23] border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight">Optimized Shopping Route</h2>
-                  <p className="text-xs text-gray-400 font-mono">Multi-stop trip starting & returning to hub {results.userLocation.zipcode} ({results.userLocation.city})</p>
+                  <h2 className="text-xl font-bold tracking-tight">Automatically Recommended Shopping Route</h2>
+                  <p className="text-xs text-gray-400 font-mono">Nearest grocery store options within {radiusMiles} miles; starts and returns to your address</p>
                 </div>
                 <button
                   onClick={() => { setOptimizedRoute(null); setStep('basket') }}
@@ -295,6 +256,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
                 </div>
               </div>
 
+              <p className="text-xs text-gray-400 mb-4">Stores are selected automatically by proximity. Product availability, prices and nutritional rankings cannot be verified with the current data source; multiple stops are suggested for comparison, not because every stop is required.</p>
               {/* Stops List */}
               <div className="space-y-4">
                 {optimizedRoute.stops.map((stop, idx) => (
@@ -342,7 +304,7 @@ function ResultsPage({ darkMode }: { darkMode: boolean }) {
               </Marker>
 
               {/* Store Stop Markers Plotted at Real Geographic Coordinates */}
-              {allStoresList.map((store, idx) => (
+              {(step === 'route' && optimizedRoute ? allStoresList.filter(store => optimizedRoute.stops.some(stop => stop.storeId === store.id)) : []).map((store, idx) => (
                 <Marker key={store.id} position={[store.latitude, store.longitude]}>
                   <Popup>
                     <strong>Store #{idx + 1}: {store.name}</strong><br />{store.address}
