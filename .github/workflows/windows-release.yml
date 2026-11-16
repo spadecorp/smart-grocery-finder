@@ -33,7 +33,7 @@ jobs:
           npm ci --prefix client
           npm install --no-save --no-package-lock @tauri-apps/cli@2
       - name: Generate Smart Grocer icons
-        run: npx --no-install tauri icon client/SPaDe_Name3.png
+        run: npx --no-install tauri icon client/SPaDe_Name3.png --fit contain
       - name: Build Windows installer
         run: npx --no-install tauri build --bundles nsis
       - name: Upload installer as build artifact
